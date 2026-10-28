@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Task Log">
+<title>Task Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#eef3f1;--card:#fff;--ink:#14302b;--mute:#5d726d;--line:#d5e0dc;--acc:#0f766e;--accInk:#fff;--danger:#b42318;--sh:#e08a00;--ot:#8b5cf6;--dr:#0e9f8e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a18;--card:#162623;--ink:#e6f1ee;--mute:#93aaa4;--line:#27403b;--acc:#35c2b3;--accInk:#06201d;--danger:#ff8a80}}
+:root[data-theme="dark"]{--bg:#0e1a18;--card:#162623;--ink:#e6f1ee;--mute:#93aaa4;--line:#27403b;--acc:#35c2b3;--accInk:#06201d;--danger:#ff8a80}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:96px}
+main{max-width:560px;margin:0 auto;padding:20px 16px}
+h1{font-size:30px;line-height:1.1;margin:8px 0 2px;letter-spacing:-.5px}
+.sub{color:var(--mute);margin:0 0 16px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;min-height:44px;padding:0 16px;border:1.5px solid var(--line);border-radius:22px;background:var(--card);color:var(--ink);font:inherit;font-weight:600}
+.chips button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+.lbl{font-size:13px;color:var(--mute);margin:4px 0 0}
+#list{display:grid;gap:10px;margin-top:8px}
+.card{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:16px;padding:14px 14px 6px}
+.card.Shunting{--c:var(--sh)}.card.OT{--c:var(--ot)}.card.Driving{--c:var(--dr)}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.top b{font-size:18px}
+.top span{color:var(--mute);font-size:14px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0 6px}
+dt{color:var(--mute);font-size:14px}dd{margin:0;overflow-wrap:anywhere}
+.hrs{display:inline-block;margin-top:2px;font-weight:700;color:var(--ot)}
+.act{display:flex;gap:4px;align-items:center;border-top:1px solid var(--line);margin:8px -14px 0;padding:4px 8px}
+.act button{min-height:44px;padding:0 12px;border:0;background:transparent;color:var(--mute);font:inherit;font-weight:600;border-radius:10px}
+.act .claim{margin-right:auto;color:var(--danger)}
+.act .claim.on{color:var(--acc)}
+.act .del{color:var(--danger)}
+.empty{text-align:center;color:var(--mute);padding:40px 16px}
+.empty strong{display:block;color:var(--ink);font-size:18px;margin-bottom:4px}
+.exp{min-height:48px;padding:0 20px;border:1.5px solid var(--acc);border-radius:24px;background:transparent;color:var(--acc);font:inherit;font-weight:700;margin:0 0 12px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.tools .exp{margin:0}
+.emu{display:flex;gap:8px}.emu input{flex:1}.emu button{flex:none;width:56px;min-height:52px;border:1.5px solid var(--acc);border-radius:14px;background:transparent;color:var(--acc);font:inherit;font-weight:700;font-size:22px}
+.btn{width:100%;min-height:52px;border:0;border-radius:26px;background:var(--acc);color:var(--accInk);font:inherit;font-weight:700;margin-top:14px}.btn.alt{background:transparent;border:1.5px solid var(--acc);color:var(--acc)}
+details{margin-top:18px}summary{min-height:44px;font-weight:600}textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);padding:10px;font:13px/1.4 monospace}
+ol{padding-left:20px}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));min-height:56px;padding:0 22px;border:0;border-radius:28px;background:var(--acc);color:var(--accInk);font:inherit;font-weight:700;font-size:17px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.sheet{position:fixed;inset:0;background:var(--bg);overflow-y:auto;display:none;padding-top:env(safe-area-inset-top,0px);z-index:5}
+.sheet.on{display:block}
+.sheet>div{max-width:560px;margin:0 auto;padding:12px 16px calc(110px + env(safe-area-inset-bottom,0px))}
+.sh-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sh-head h2{margin:0;font-size:22px}
+.sh-head button{min-height:44px;padding:0 12px;border:0;background:transparent;color:var(--mute);font:inherit;font-weight:600}
+label{display:block;font-weight:600;margin:14px 0 6px}
+input[type=text],input[type=date],input[type=time],select{width:100%;min-height:52px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);padding:0 14px;font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hidden{display:none!important}
+.calc{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--card);border:1.5px dashed var(--ot);font-weight:700}
+.calc small{display:block;font-weight:400;color:var(--mute)}
+.chk{display:flex;align-items:center;gap:12px;margin:18px 0 0;min-height:52px;font-weight:600}
+.chk input{width:26px;height:26px;accent-color:var(--acc)}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.savebar div{max-width:560px;margin:0 auto}
+.savebar button{width:100%;min-height:54px;border:0;border-radius:27px;background:var(--acc);color:var(--accInk);font:inherit;font-weight:700;font-size:17px}
+.err{color:var(--danger);font-weight:600;margin:0 0 6px;min-height:0}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px));max-width:528px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:14px;padding:4px 4px 4px 16px;display:none;align-items:center;justify-content:space-between;z-index:9}
+.toast.on{display:flex}
+.toast button{min-height:44px;padding:0 14px;border:0;background:transparent;color:var(--acc);font:inherit;font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <h1>Task Log</h1>
+  <p class="sub" id="sub"></p>
+  <div class="tools"><button class="exp hidden" id="exp">Export to Excel</button><button class="exp" id="syncbtn">Google Sheet sync</button></div>
+  <p class="lbl" id="stat"></p>
+  <p class="lbl">Description</p>
+  <div class="chips" id="tf"></div>
+  <p class="lbl">Claim status</p>
+  <div class="chips" id="cf"></div>
+  <div id="list"></div>
+</main>
+<button class="fab" id="new">+ New entry</button>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Entry form"><div>
+  <div class="sh-head"><h2 id="stitle">New entry</h2><button id="close">Cancel</button></div>
+  <label for="date">Date</label>
+  <input type="date" id="date">
+  <label for="type">Description</label>
+  <select id="type">
+    <option value="">Choose description</option>
+    <option>Shunting</option><option>OT</option><option>Driving</option>
+  </select>
+
+  <div id="g-emu" class="hidden"><label for="emu">EMU</label><div class="emu"><input type="text" id="emu" placeholder="e.g. 563 becomes 563/564" inputmode="text" autocomplete="off"></div></div>
+  <div id="g-loc" class="hidden"><div class="row">
+    <div><label for="sfrom">From</label><input type="text" id="sfrom" placeholder="Location" autocomplete="off"></div>
+    <div><label for="sto">To</label><input type="text" id="sto" placeholder="Location" autocomplete="off"></div>
+  </div></div>
+  <div id="g-time" class="hidden"><div class="row">
+    <div><label for="ofrom">From</label><input type="time" id="ofrom"></div>
+    <div><label for="oto">To</label><input type="time" id="oto"></div>
+  </div>
+  <div class="calc" id="calc">Hours: –<small>Enter From and To times</small></div></div>
+  <div id="g-reason" class="hidden"><label for="reason" id="rlabel">Reason</label><input type="text" id="reason" autocomplete="off"></div>
+  <div id="g-off" class="hidden"><label for="officer">Authorization Officer</label><input type="text" id="officer" placeholder="Name" autocomplete="off"></div>
+
+  <label class="chk"><input type="checkbox" id="claimed"> Claimed</label>
+</div>
+<div class="savebar"><div><p class="err" id="err" role="alert"></p><button id="save">Save entry</button></div></div>
+</div>
+
+<div class="sheet" id="setsheet" role="dialog" aria-modal="true" aria-label="Google Sheet sync"><div>
+  <div class="sh-head"><h2>Google Sheet sync</h2><button id="sclose">Close</button></div>
+  <p class="lbl hidden" id="prevnote">This is the preview. Live sync works in the standalone app file, not here.</p>
+  <p>Each time you save, edit or delete an entry, the app sends all entries to your Google Sheet.</p>
+  <label for="url">Web app URL</label>
+  <input type="text" id="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+  <p class="err" id="uerr" role="alert"></p>
+  <button class="btn" id="usave">Save and sync now</button>
+  <details><summary>One-time setup (easier on a computer)</summary>
+  <ol><li>Create a Google Sheet.</li><li>Open Extensions, then Apps Script. Delete the sample code and paste the script below.</li><li>Tap Deploy, then New deployment, type Web app. Set Execute as: Me and Who has access: Anyone. Deploy and allow access.</li><li>Copy the Web app URL and paste it above.</li></ol>
+  <textarea id="gs" readonly rows="12">function doPost(e){
+  var d=JSON.parse(e.postData.contents).rows;
+  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  sh.clear();
+  sh.getRange(1,3,d.length,1).setNumberFormat('@');
+  sh.getRange(1,1,d.length,d[0].length).setValues(d);
+  sh.setFrozenRows(1);
+  return ContentService.createTextOutput('ok');
+}</textarea>
+  <button class="btn alt" id="gcopy">Copy script</button></details>
+</div></div>
+<div class="toast" id="toast"><span id="tmsg"></span><button id="undo"></button></div>
+
+<script>
+var KEY='tasklog.v2',E=[],tf='All',cf='all',editId=null,last=null,tt;
+try{E=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){E=[]}
+if(!Array.isArray(E))E=[];
+function save(){try{localStorage.setItem(KEY,JSON.stringify(E))}catch(e){}sync()}
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+function fdate(s){var p=s.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);return d.toLocaleDateString([],{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+function mins(f,t){if(!f||!t)return null;var a=f.split(':'),b=t.split(':');var m=(+b[0]*60+ +b[1])-(+a[0]*60+ +a[1]);if(m===0)return null;if(m<0)m+=1440;return m}
+function emuFmt(s){s=String(s||'').trim();var m=s.match(/^(\d+)\s*\/?$/);return m?m[1]+'/'+(parseInt(m[1],10)+1):s}
+function hm(m){return (m/60).toFixed(2)+' hrs'}
+
+function chips(el,items,cur,fn){
+  el.innerHTML=items.map(function(i){return '<button data-v="'+i[0]+'" aria-pressed="'+(cur===i[0])+'">'+i[1]+'</button>'}).join('');
+}
+function render(){
+  chips($('tf'),[['All','All'],['Shunting','Shunting'],['OT','OT'],['Driving','Driving']],tf);
+  chips($('cf'),[['all','All'],['no','Not claimed'],['yes','Claimed']],cf);
+  var unc=E.filter(function(e){return !e.claimed}),ot=0;
+  unc.forEach(function(e){if(e.type==='OT')ot+=mins(e.ofrom,e.oto)||0});
+  $('sub').textContent=E.length?(unc.length+' not claimed'+(ot?' · OT '+hm(ot)+' to claim':'')):'Record shunting, OT and driving duties.';
+  var show=E.filter(function(e){return (tf==='All'||e.type===tf)&&(cf==='all'||(cf==='yes')===!!e.claimed)})
+    .sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
+  if(!show.length){
+    $('list').innerHTML='<div class="empty"><strong>'+(E.length?'No entries match':'No entries yet')+'</strong>'+(E.length?'Change the filters above.':'Tap New entry to record your first duty.')+'</div>';return}
+  $('list').innerHTML=show.map(function(e){
+    var r=function(k,v){return '<dt>'+k+'</dt><dd>'+esc(v)+'</dd>'};var d='';
+    if(e.type==='Shunting')d=r('EMU',e.emu)+r('Route',e.sfrom+' to '+e.sto)+r('Reason',e.reason)+r('Authorized by',e.officer);
+    else if(e.type==='OT'){var m=mins(e.ofrom,e.oto);d=r('Time',e.ofrom+' to '+e.oto)+'<dt>Hours</dt><dd><span class="hrs">'+hm(m)+'</span></dd>'+r('Reason',e.reason)+r('Authorized by',e.officer)}
+    else d=r('Reason',e.reason);
+    return '<article class="card '+e.type+'" data-id="'+e.id+'"><div class="top"><b>'+e.type+'</b><span>'+fdate(e.date)+'</span></div><dl>'+d+'</dl><div class="act"><button class="claim'+(e.claimed?' on':'')+'" data-a="claim">'+(e.claimed?'✓ Claimed':'Not claimed')+'</button><button data-a="edit">Edit</button><button class="del" data-a="del">Delete</button></div></article>'}).join('');
+}
+function show(g,on){$(g).classList.toggle('hidden',!on)}
+function layout(){
+  var t=$('type').value;
+  show('g-emu',t==='Shunting');show('g-loc',t==='Shunting');show('g-time',t==='OT');
+  show('g-reason',!!t);show('g-off',t==='Shunting'||t==='OT');
+  $('rlabel').textContent=t?'Reason for '+(t==='OT'?'OT':t.toLowerCase()):'Reason';
+  calc();
+}
+function calc(){var m=mins($('ofrom').value,$('oto').value);
+  $('calc').innerHTML=m?'Hours: '+hm(m)+'<small>If To is earlier than From, it counts past midnight.</small>':'Hours: –<small>Enter From and To times</small>'}
+function open(e){
+  editId=e?e.id:null;$('stitle').textContent=e?'Edit entry':'New entry';$('err').textContent='';
+  var f={date:e?e.date:today(),type:e?e.type:'',emu:'',sfrom:'',sto:'',ofrom:'',oto:'',reason:'',officer:''};
+  if(e)for(var k in f)if(e[k]!=null)f[k]=e[k];
+  for(var k in f)$(k).value=f[k];
+  $('claimed').checked=!!(e&&e.claimed);
+  layout();$('sheet').classList.add('on');$('sheet').scrollTop=0;
+}
+function close(){$('sheet').classList.remove('on')}
+function submit(){
+  var t=$('type').value,v=function(i){return $(i).value.trim()};
+  var o={id:editId||Date.now(),date:$('date').value,type:t,claimed:$('claimed').checked};
+  if(!o.date)return err('Pick a date.');
+  if(!t)return err('Choose a description.');
+  if(t==='Shunting'){o.emu=emuFmt(v('emu'));o.sfrom=v('sfrom');o.sto=v('sto');o.reason=v('reason');o.officer=v('officer');
+    if(!o.emu||!o.sfrom||!o.sto||!o.reason||!o.officer)return err('Fill in EMU, From, To, Reason and Authorization Officer.')}
+  if(t==='OT'){o.ofrom=$('ofrom').value;o.oto=$('oto').value;o.reason=v('reason');o.officer=v('officer');
+    if(!mins(o.ofrom,o.oto))return err('Enter different From and To times.');
+    if(!o.reason||!o.officer)return err('Fill in Reason and Authorization Officer.')}
+  if(t==='Driving'){o.reason=v('reason');if(!o.reason)return err('Enter the reason for driving.')}
+  var i=E.findIndex(function(x){return x.id===editId});
+  if(i>=0)E[i]=o;else E.push(o);
+  save();close();render();
+  if(url)note('Entry saved. Sending to Google Sheet.');else if(dl||!window.claude)toast('Entry saved','Update Excel',exportXlsx,8000);
+}
+function err(m){$('err').textContent=m}
+$('new').onclick=function(){open(null)};
+$('close').onclick=close;$('save').onclick=submit;$('type').onchange=layout;
+$('ofrom').oninput=calc;$('oto').oninput=calc;
+$('tf').onclick=function(e){var b=e.target.closest('button');if(b){tf=b.dataset.v;render()}};
+$('cf').onclick=function(e){var b=e.target.closest('button');if(b){cf=b.dataset.v;render()}};
+$('list').onclick=function(e){
+  var b=e.target.closest('button[data-a]');if(!b)return;
+  var id=+b.closest('.card').dataset.id,i=E.findIndex(function(x){return x.id===id});if(i<0)return;
+  if(b.dataset.a==='claim'){E[i].claimed=!E[i].claimed;save();render()}
+  else if(b.dataset.a==='edit')open(E[i]);
+  else{var ent=E[i];E.splice(i,1);save();render();toast('Entry deleted','Undo',function(){E.push(ent);save();render()},5000)}
+};
+var tfn=null,dl=null;
+function toast(msg,label,fn,ms){$('tmsg').textContent=msg;$('undo').textContent=label;tfn=fn;$('toast').classList.add('on');clearTimeout(tt);tt=setTimeout(function(){$('toast').classList.remove('on')},ms)}
+$('undo').onclick=function(){$('toast').classList.remove('on');clearTimeout(tt);if(tfn)tfn()};
+function note(m){toast(m,'OK',null,5000)}
+function buildRows(){
+  var rows=[['Date','Description','EMU','From','To','OT hours','Reason','Authorization Officer','Claimed']];
+  E.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id}).forEach(function(e){
+    var ot=e.type==='OT',m=ot?mins(e.ofrom,e.oto):null;
+    rows.push([e.date,e.type,e.emu||'',ot?e.ofrom:(e.sfrom||''),ot?e.oto:(e.sto||''),m?Math.round(m/60*100)/100:'',e.reason||'',e.officer||'',e.claimed?'Yes':'No']);
+  });return rows}
+function put(name,buf,mime){
+  if(dl)return dl.save({filename:name,data:buf});
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:mime}));a.download=name;document.body.appendChild(a);a.click();a.remove();return Promise.resolve()}
+function exportXlsx(){
+  if(!E.length)return note('No entries to export yet.');
+  var rows=buildRows(),job;
+  if(typeof XLSX!=='undefined'){
+    var ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:10},{wch:34},{wch:24},{wch:9}];
+    for(var r=2;r<=rows.length;r++){var c=ws['F'+r];if(c&&typeof c.v==='number')c.z='0.00'}
+    var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Task Log');
+    job=put('task-log.xlsx',XLSX.write(wb,{bookType:'xlsx',type:'array'}),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }else{
+    var csv='\ufeff'+rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+    job=put('task-log.csv',csv,'text/csv');
+  }
+  job.then(function(){note('File saved')}).catch(function(x){if(!x||x.code!=='declined')note('Could not save the file.')});
+}
+$('exp').onclick=exportXlsx;
+try{if(window.claude&&claude.use)claude.use('downloads').then(function(d){dl=d;$('exp').classList.toggle('hidden',!d)}).catch(function(){})}catch(e){}
+var SKEY='tasklog.sync',url='',dirty=false;
+try{url=localStorage.getItem(SKEY)||''}catch(e){}
+function stat(m){$('stat').textContent=m}
+function sync(){
+  if(!url)return;dirty=true;
+  if(!navigator.onLine)return stat('Offline. Google Sheet will update when you are back online.');
+  fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({rows:buildRows()})})
+    .then(function(){dirty=false;stat('Google Sheet updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))})
+    .catch(function(){stat('Could not reach the Google Sheet. It will retry on the next change.')});
+}
+window.addEventListener('online',function(){if(dirty)sync()});
+if(url)stat('Google Sheet sync is on');
+if(!window.claude)$('exp').classList.remove('hidden');else $('prevnote').classList.remove('hidden');
+$('emu').onblur=function(){this.value=emuFmt(this.value)};
+$('syncbtn').onclick=function(){$('url').value=url;$('uerr').textContent='';$('setsheet').classList.add('on')};
+$('sclose').onclick=function(){$('setsheet').classList.remove('on')};
+$('usave').onclick=function(){var v=$('url').value.trim();
+  if(v&&v.indexOf('https://script.google.com/')!==0)return $('uerr').textContent='Paste the Web app URL that starts with https://script.google.com/';
+  url=v;try{localStorage.setItem(SKEY,url)}catch(e){}
+  $('setsheet').classList.remove('on');
+  if(url){stat('Sending to Google Sheet...');sync()}else stat('Google Sheet sync is off')};
+$('gcopy').onclick=function(){var t=$('gs');t.select();try{navigator.clipboard.writeText(t.value)}catch(e){document.execCommand('copy')}$('gcopy').textContent='Copied'};
+render();
+if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
